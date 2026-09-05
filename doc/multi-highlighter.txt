@@ -1,0 +1,192 @@
+*multi-highlighter.txt*  Multiple simultaneous buffer highlights
+
+                                                         *multi-highlighter*
+
+Author:   MasterTemple
+License:  MIT
+
+==============================================================================
+CONTENTS                                          *multi-highlighter-contents*
+
+  1. Introduction ......... |multi-highlighter-intro|
+  2. Setup ................ |multi-highlighter-setup|
+  3. Commands ............. |multi-highlighter-commands|
+  4. Lua API .............. |multi-highlighter-api|
+  5. Configuration ........ |multi-highlighter-config|
+
+==============================================================================
+1. INTRODUCTION                                      *multi-highlighter-intro*
+
+multi-highlighter.nvim lets you maintain several independent highlight
+"categories" at once—think of it as having multiple concurrent search
+highlights, each in its own colour.
+
+Each category has:
+  • A name (e.g. "todo", "fixme", "search1")
+  • A highlight group (auto-generated or linked to an existing one)
+  • A set of extmark-based ranges across buffers
+
+==============================================================================
+2. SETUP                                             *multi-highlighter-setup*
+
+The plugin works out of the box without any configuration.  Optionally call
+setup() in your init.lua: >lua
+
+  require("multi-highlighter").setup({
+    -- Colour palette used when a category has no explicit fg/bg.
+    -- Entries are cycled round-robin as new categories are created.
+    palette = {
+      { bg = "#3d5a3e", fg = "#c8e6c9" },
+      { bg = "#3b3a5c", fg = "#ce93d8" },
+      -- ...
+    },
+
+    -- Pre-define categories at startup so they persist across sessions
+    -- (as long as Neovim keeps running).
+    categories = {
+      todo  = { bg = "#5c3a1e", fg = "#ffcc80", bold = true },
+      notes = { hl_group = "DiffAdd" },
+    },
+  })
+<
+
+==============================================================================
+3. COMMANDS                                       *multi-highlighter-commands*
+
+All commands support <Tab> completion for sub-commands, category names, and
+option keys.
+
+------------------------------------------------------------------------------
+                                                                  *:Hl-add*
+:Hl add {category} {range} [{range}...]
+
+  Add one or more ranges to {category} in the current buffer.
+
+  Range formats:
+    N            whole line N (1-indexed)
+    N,C          character at line N, column C (1-indexed)
+    N,C1-M,C2    from line N col C1 to line M col C2
+
+  Example: >
+    :Hl add todo 42
+    :Hl add todo 42,5-42,12
+<
+
+:Hl add {category} /{pattern}/[flags]
+
+  Add all matches of {pattern} in the current buffer to {category}.
+  Uses Vim regex.  The trailing / and flags are optional.
+
+  Example: >
+    :Hl add todo /TODO/g
+    :Hl add fixme /FIXME\|HACK/
+<
+
+------------------------------------------------------------------------------
+                                                                  *:Hl-set*
+:Hl set {category} {range|/pattern/}
+
+  Like |:Hl-add| but first clears existing matches for {category}.
+
+------------------------------------------------------------------------------
+                                                                *:Hl-clear*
+:Hl clear [{category}...]
+
+  With no arguments: clear ALL categories.
+  With arguments: clear only the named categories.
+
+  Example: >
+    :Hl clear
+    :Hl clear todo fixme
+<
+
+------------------------------------------------------------------------------
+                                                             *:Hl-category*
+:Hl category [{name} [key=value ...]]
+
+  With no arguments: list defined categories.
+  With just {name}: create/reset a category with default colours.
+  With key=value pairs: set display options.
+
+  Option keys:
+    fg=COLOR        foreground colour (#rrggbb)
+    bg=COLOR        background colour (#rrggbb)
+    hl_group=NAME   link to an existing Vim highlight group
+    bold=true|false
+    italic=true|false
+    underline=true|false
+
+  Example: >
+    :Hl category search1 bg=#3d5a3e fg=#c8e6c9 bold=true
+    :Hl category results hl_group=Search
+<
+
+------------------------------------------------------------------------------
+                                                              *:Hl-qflist*
+:Hl qflist [{category}...]
+
+  Populate the quickfix list with matches from all categories, or only from
+  the named categories.  Opens the quickfix window afterwards.
+
+  Example: >
+    :Hl qflist
+    :Hl qflist todo fixme
+<
+
+------------------------------------------------------------------------------
+                                                              *:Hl-loclist*
+:Hl loclist [{category}...]
+
+  Like |:Hl-qflist| but uses the location list of the current window.
+
+==============================================================================
+4. LUA API                                             *multi-highlighter-api*
+
+All functions are available on the module table: >lua
+  local mh = require("multi-highlighter")
+<
+
+mh.setup({opts})                                        *mh.setup()*
+  Initialise the plugin.  See |multi-highlighter-config|.
+
+mh.define_category({name}, {opts})              *mh.define_category()*
+  Create or redefine a category.  {opts} accepts the same keys as the
+  |:Hl-category| command (fg, bg, hl_group, bold, italic, underline).
+
+mh.add_range({cat}, {range_str})                    *mh.add_range()*
+  Add a range to {cat} in the current buffer.  {range_str} format as above.
+
+mh.set_range({cat}, {range_str})                    *mh.set_range()*
+  Clear then add.
+
+mh.add_pattern({cat}, {pattern} [, {flags}])       *mh.add_pattern()*
+  Add all Vim-regex matches in the current buffer.
+
+mh.set_pattern({cat}, {pattern})                   *mh.set_pattern()*
+  Clear then add pattern matches.
+
+mh.clear({cat})                                         *mh.clear()*
+  Clear all highlights for {cat}.
+
+mh.clear_all()                                        *mh.clear_all()*
+  Clear every category.
+
+mh.get_categories()                               *mh.get_categories()*
+  Returns a sorted string[] of defined category names.
+
+mh.populate_qflist({cat_names})               *mh.populate_qflist()*
+  Populate quickfix list.  {cat_names} is string[]|nil (nil = all).
+
+mh.populate_loclist({cat_names})             *mh.populate_loclist()*
+  Populate location list.
+
+==============================================================================
+5. CONFIGURATION                                     *multi-highlighter-config*
+
+Key           Type       Default            Description~
+palette       table      8 colour pairs     Colours cycled for new categories
+categories    table      {}                 Pre-defined persistent categories
+
+See |multi-highlighter-setup| for a full example.
+
+ vim:tw=78:ts=8:ft=help:norl:
