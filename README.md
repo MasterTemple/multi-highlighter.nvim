@@ -8,6 +8,10 @@ Each **category** gets its own colour and a set of highlighted ranges that persi
 
 ---
 
+![Screenshot](./assets/Screenshot.png)
+
+---
+
 ## Features
 
 - Unlimited named highlight categories, each with a distinct colour
